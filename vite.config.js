@@ -17,7 +17,7 @@ const manifest = defineManifest({
     {
       "matches": ["https://*.reddit.com/*"],
       "run_at": "document_end",
-      "js": ["src/main.jsx"]
+      "js": ["src/main.js"]
     }
   ]
 });
