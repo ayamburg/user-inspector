@@ -1,56 +1,78 @@
-import axios from 'axios';
+import axios from "axios";
 
-let seenAuthors = {};
+const seenAuthors = {};
 
-async function getCommentSubreddits(author){
+async function getSubreddits(author, type) {
   const subreddits = {};
   let after;
-  do{
-    const response = await axios.get(`/user/${author}/comments.json?limit=100&after=${after}`);
+  let object = "";
+
+  if (type === "comments") {
+    object = "comments";
+  } else if (type === "posts") {
+    object = "submitted";
+  } else {
+    throw Error(`Invalid type ${type} for function getSubreddits`);
+  }
+
+  do {
+    const response = await axios.get(
+      `/user/${author}/${object}.json?limit=100&after=${after}`
+    );
     console.log(response);
     const comments = response.data.data.children;
     after = response.data.data.after;
     console.log(comments);
-    comments.forEach(com => {
+    comments.forEach((com) => {
       const sub = com.data.subreddit;
-      if(subreddits[sub]){
+      if (subreddits[sub]) {
         subreddits[sub] += 1;
-      }else{
+      } else {
         subreddits[sub] = 1;
       }
     });
-  }while(after !== null);
+  } while (after !== null);
   return subreddits;
 }
 
 async function handleHover(event) {
-  const author = event.fromElement.getElementsByClassName('author')[0].href.split("/").pop();
+  const author = event.fromElement
+    .getElementsByClassName("author")[0]
+    .href.split("/")
+    .pop();
   console.log(author);
-  if(!seenAuthors[author]){
-    seenAuthors[author] = 1;
-    seenAuthors[author] = await getCommentSubreddits(author);
+  if (!seenAuthors[author]) {
+    seenAuthors[author] = { postSubreddits: {}, commentSubreddits: {} };
+    seenAuthors[author].commentSubreddits = await getSubreddits(
+      author,
+      "comments"
+    );
+    seenAuthors[author].postSubreddits = await getSubreddits(author, "posts");
   }
 
-  const subreddits = seenAuthors[author];
+  const subreddits = seenAuthors[author].commentSubreddits;
   console.log(seenAuthors);
-  const topSubreddits = Object.keys(subreddits).sort((a, b) => subreddits[b] - subreddits[a]).slice(0,5);
+  const topSubreddits = Object.keys(subreddits)
+    .sort((a, b) => subreddits[b] - subreddits[a])
+    .slice(0, 5);
   let authorToolTipHead;
-  const interval = setInterval(function(){
-    const authorToolTipHeads = Array.from(document.getElementsByClassName('author-tooltip__head'));
-    authorToolTipHead = authorToolTipHeads.find(a => {
-      if(a.innerText.includes(`u/${author}`)) return true;
+  const interval = setInterval(function () {
+    const authorToolTipHeads = Array.from(
+      document.getElementsByClassName("author-tooltip__head")
+    );
+    authorToolTipHead = authorToolTipHeads.find((a) => {
+      if (a.innerText.includes(`u/${author}`)) return true;
       return false;
     });
-    if(authorToolTipHead){
+    if (authorToolTipHead) {
       clearInterval(interval);
       authorToolTipHead.after(`Top Subreddits: ${topSubreddits.join(", ")}`);
     }
-  } ,1000)
-  
-};
+  }, 1000);
+}
 
 const authors = document.querySelectorAll(`a[href*="/user/"]`);
 
-authors.forEach(author => {
-  author.addEventListener('mouseover', handleHover);
+authors.forEach((author) => {
+  author.addEventListener("mouseover", handleHover);
 });

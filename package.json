@@ -19,6 +19,11 @@
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
     "@vitejs/plugin-react": "^1.3.2",
+    "eslint": "^8.21.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-react": "^7.30.1",
+    "prettier": "2.7.1",
     "vite": "^2.9.9"
   }
 }
