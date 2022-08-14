@@ -23,7 +23,6 @@ async function getSubreddits(author, type) {
     console.log(response);
     const comments = response.data.data.children;
     after = response.data.data.after;
-    console.log(comments);
     comments.forEach((com) => {
       const sub = com.data.subreddit;
       if (subreddits[sub]) {
@@ -36,12 +35,7 @@ async function getSubreddits(author, type) {
   return subreddits;
 }
 
-async function handleHover(event) {
-  const author = event.fromElement
-    .getElementsByClassName("author")[0]
-    .href.split("/")
-    .pop();
-  console.log(author);
+async function getAnalysis(author) {
   if (!seenAuthors[author]) {
     seenAuthors[author] = { postSubreddits: {}, commentSubreddits: {} };
     seenAuthors[author].commentSubreddits = await getSubreddits(
@@ -58,7 +52,6 @@ async function handleHover(event) {
   });
   const total = Object.values(subreddits).reduce((a, b) => a + b);
 
-  console.log(seenAuthors);
   const topSubreddits = Object.keys(subreddits)
     .sort((a, b) => subreddits[b] - subreddits[a])
     .slice(0, 5);
@@ -66,33 +59,24 @@ async function handleHover(event) {
   const topSubredditInfo = topSubreddits.map(sub => {
     return {name: sub, contributions: subreddits[sub], percent: subreddits[sub]/total}
   });
-  let authorToolTipHead;
-  const interval = setInterval(function () {
-    const authorToolTipHeads = Array.from(
-      document.getElementsByClassName("author-tooltip__head")
-    );
-    authorToolTipHead = authorToolTipHeads.find((a) => {
-      if (a.innerText.includes(`u/${author}`)) return true;
-      return false;
-    });
-    if (authorToolTipHead) {
-      clearInterval(interval);
-      authorToolTipHead.after(`Top Subreddits: ${topSubredditInfo.join(", ")}`);
-    }
-  }, 1000);
+  return topSubredditInfo;
 }
 
 const authors = document.querySelectorAll(`a[href*="/user/"]`);
 const searchIcon = chrome.runtime.getURL("search-icon.png");
 
-authors.forEach((author, i) => {
+authors.forEach((authorElement, i) => {
+  const authorArray = authorElement.href.split("/")
+  const userIndex = authorArray.indexOf("user");
+  if(userIndex === -1) return;
+  const author = authorArray[userIndex + 1];
+  if(!author || author === "me") return;
   const inspectHTML = `
-    <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12">
+    <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12" author="${author}">
     <div class="userInspector-tooltip" id="userInspector-tooltip${i}">
-      <span >Tooltip text</span>
     </div>
   `;
-  author.insertAdjacentHTML("afterend", inspectHTML);
+  authorElement.insertAdjacentHTML("afterend", inspectHTML);
   // author.addEventListener("mouseover", handleHover);
 });
 
@@ -103,17 +87,45 @@ inspectors.forEach((inspector) => {
   createPopper(inspector, tooltip);
 });
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', async function(e) {
   if(e.target.classList.contains("userInspector-inspect-user")){
     const tooltip = document.querySelector(`#userInspector-tooltip${e.target.id}`);
     if(tooltip.hasAttribute('data-show'))
       tooltip.removeAttribute('data-show');
-    else 
+    else {
+      tooltip.innerHTML = "loading...";
       tooltip.setAttribute('data-show', '');
-  }else{
-    const activeTooltip = document.querySelector('.userInspector-tooltip[data-show]');
-    if (activeTooltip && !activeTooltip.contains(e.target)){
-      activeTooltip.removeAttribute('data-show');
+      const analysis = await getAnalysis(e.target.getAttribute("author"));
+      const rows = analysis.map(sub => {
+        return `
+          <tr>
+            <td>${sub.name}</td>
+            <td>${Math.round(sub.percent * 100)}</td>
+            <td>${sub.contributions}</td>
+          </tr>
+        `;
+      });
+
+      const analysisDisplay = `
+        <table>
+          <tr>
+            <th>Subreddit</th>
+            <th>Percent</th>
+            <th>Contributions</th>
+          </tr>
+          ${rows.join("")}
+        </table>
+      `;
+      console.log(rows.join());
+      console.log(analysisDisplay);
+      tooltip.innerHTML = analysisDisplay;
     }
+  }else{
+    const activeTooltips = document.querySelectorAll('.userInspector-tooltip[data-show]');
+    activeTooltips.forEach((activeTooltip) => {
+      if (activeTooltip && !activeTooltip.contains(e.target)){
+        activeTooltip.removeAttribute('data-show');
+      }
+    })
   }
 }); 
