@@ -1,0 +1,11 @@
+.userInspector-inspect-user{
+    cursor: pointer;
+}
+
+.userInspector-tooltip{
+    display: none;
+}
+
+.userInspector-tooltip[data-show]{
+    display: block;
+}
