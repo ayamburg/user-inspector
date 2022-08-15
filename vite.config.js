@@ -14,15 +14,15 @@ const manifest = defineManifest({
       matches: ["https://*.reddit.com/*"],
       run_at: "document_end",
       js: ["src/main.js"],
-      css: ["main.css"]
+      css: ["main.css"],
     },
   ],
   web_accessible_resources: [
     {
-      resources: [ "search-icon.png"],
+      resources: ["search-icon.png"],
       matches: ["https://*.reddit.com/*"],
-      use_dynamic_url: true
-    }
+      use_dynamic_url: true,
+    },
   ],
 });
 

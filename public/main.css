@@ -1,25 +1,25 @@
-.userInspector-inspect-user{
-    cursor: pointer;
+.userInspector-inspect-user {
+  cursor: pointer;
 }
 
-.userInspector-tooltip{
-    background: #333;
-    color: white;
-    font-weight: bold;
-    padding: 4px 8px;
-    font-size: 10px;
-    border-radius: 4px;
-    display: none;
+.userInspector-tooltip {
+  background: #333;
+  color: white;
+  font-weight: bold;
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 4px;
+  display: none;
 }
 
 .userInspector-tooltip td {
-    padding: 0 5px;
+  padding: 0 5px;
 }
 
 .userInspector-tooltip th {
-    padding: 0 5px;
+  padding: 0 5px;
 }
 
-.userInspector-tooltip[data-show]{
-    display: block;
+.userInspector-tooltip[data-show] {
+  display: block;
 }

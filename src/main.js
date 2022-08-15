@@ -1,5 +1,5 @@
 import axios from "axios";
-import { createPopper } from '@popperjs/core';
+import { createPopper } from "@popperjs/core";
 
 const seenAuthors = {};
 
@@ -46,8 +46,9 @@ async function getAnalysis(author) {
   }
 
   const subreddits = seenAuthors[author].commentSubreddits;
-  Object.keys(seenAuthors[author].postSubreddits).forEach(sub => {
-    if(subreddits[sub]) subreddits[sub] += seenAuthors[author].postSubreddits[sub];
+  Object.keys(seenAuthors[author].postSubreddits).forEach((sub) => {
+    if (subreddits[sub])
+      subreddits[sub] += seenAuthors[author].postSubreddits[sub];
     else subreddits[sub] = seenAuthors[author].postSubreddits[sub];
   });
   const total = Object.values(subreddits).reduce((a, b) => a + b);
@@ -56,8 +57,12 @@ async function getAnalysis(author) {
     .sort((a, b) => subreddits[b] - subreddits[a])
     .slice(0, 5);
 
-  const topSubredditInfo = topSubreddits.map(sub => {
-    return {name: sub, contributions: subreddits[sub], percent: subreddits[sub]/total}
+  const topSubredditInfo = topSubreddits.map((sub) => {
+    return {
+      name: sub,
+      contributions: subreddits[sub],
+      percent: subreddits[sub] / total,
+    };
   });
   return topSubredditInfo;
 }
@@ -66,11 +71,11 @@ const authors = document.querySelectorAll(`a[href*="/user/"]`);
 const searchIcon = chrome.runtime.getURL("search-icon.png");
 
 authors.forEach((authorElement, i) => {
-  const authorArray = authorElement.href.split("/")
+  const authorArray = authorElement.href.split("/");
   const userIndex = authorArray.indexOf("user");
-  if(userIndex === -1) return;
+  if (userIndex === -1) return;
   const author = authorArray[userIndex + 1];
-  if(!author || author === "me") return;
+  if (!author || author === "me") return;
   const inspectHTML = `
     <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12" author="${author}">
     <div class="userInspector-tooltip" id="userInspector-tooltip${i}">
@@ -82,21 +87,24 @@ authors.forEach((authorElement, i) => {
 
 const inspectors = document.querySelectorAll(`.userInspector-inspect-user`);
 inspectors.forEach((inspector) => {
-  const tooltip = document.querySelector(`#userInspector-tooltip${inspector.id}`);
+  const tooltip = document.querySelector(
+    `#userInspector-tooltip${inspector.id}`
+  );
   // TODO make this more performant by only updating poppers that are on screen https://popper.js.org/docs/v2/tutorial/
   createPopper(inspector, tooltip);
 });
 
-document.addEventListener('click', async function(e) {
-  if(e.target.classList.contains("userInspector-inspect-user")){
-    const tooltip = document.querySelector(`#userInspector-tooltip${e.target.id}`);
-    if(tooltip.hasAttribute('data-show'))
-      tooltip.removeAttribute('data-show');
+document.addEventListener("click", async function (e) {
+  if (e.target.classList.contains("userInspector-inspect-user")) {
+    const tooltip = document.querySelector(
+      `#userInspector-tooltip${e.target.id}`
+    );
+    if (tooltip.hasAttribute("data-show")) tooltip.removeAttribute("data-show");
     else {
       tooltip.innerHTML = "loading...";
-      tooltip.setAttribute('data-show', '');
+      tooltip.setAttribute("data-show", "");
       const analysis = await getAnalysis(e.target.getAttribute("author"));
-      const rows = analysis.map(sub => {
+      const rows = analysis.map((sub) => {
         return `
           <tr>
             <td>${sub.name}</td>
@@ -120,12 +128,14 @@ document.addEventListener('click', async function(e) {
       console.log(analysisDisplay);
       tooltip.innerHTML = analysisDisplay;
     }
-  }else{
-    const activeTooltips = document.querySelectorAll('.userInspector-tooltip[data-show]');
+  } else {
+    const activeTooltips = document.querySelectorAll(
+      ".userInspector-tooltip[data-show]"
+    );
     activeTooltips.forEach((activeTooltip) => {
-      if (activeTooltip && !activeTooltip.contains(e.target)){
-        activeTooltip.removeAttribute('data-show');
+      if (activeTooltip && !activeTooltip.contains(e.target)) {
+        activeTooltip.removeAttribute("data-show");
       }
-    })
+    });
   }
-}); 
+});
