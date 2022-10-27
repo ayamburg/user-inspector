@@ -2,6 +2,7 @@ import axios from "axios";
 import { createPopper } from "@popperjs/core";
 
 const seenAuthors = {};
+const poppers = {};
 
 async function getSubreddits(author, type) {
   const subreddits = {};
@@ -90,8 +91,9 @@ inspectors.forEach((inspector) => {
   const tooltip = document.querySelector(
     `#userInspector-tooltip${inspector.id}`
   );
-  // TODO make this more performant by only updating poppers that are on screen https://popper.js.org/docs/v2/tutorial/
-  createPopper(inspector, tooltip);
+  poppers[inspector.id] = createPopper(inspector, tooltip, {
+    modifiers: [{ name: "eventListeners", enabled: false }],
+  });
 });
 
 document.addEventListener("click", async function (e) {
@@ -99,10 +101,29 @@ document.addEventListener("click", async function (e) {
     const tooltip = document.querySelector(
       `#userInspector-tooltip${e.target.id}`
     );
-    if (tooltip.hasAttribute("data-show")) tooltip.removeAttribute("data-show");
-    else {
+    if (tooltip.hasAttribute("data-show")) {
+      tooltip.removeAttribute("data-show");
+
+      poppers[e.target.id].setOptions((options) => ({
+        ...options,
+        modifiers: [
+          ...options.modifiers,
+          { name: "eventListeners", enabled: false },
+        ],
+      }));
+    } else {
       tooltip.innerHTML = "loading...";
       tooltip.setAttribute("data-show", "");
+
+      poppers[e.target.id].setOptions((options) => ({
+        ...options,
+        modifiers: [
+          ...options.modifiers,
+          { name: "eventListeners", enabled: true },
+        ],
+      }));
+      poppers[e.target.id].update();
+
       const analysis = await getAnalysis(e.target.getAttribute("author"));
       const rows = analysis.map((sub) => {
         return `
@@ -124,8 +145,6 @@ document.addEventListener("click", async function (e) {
           ${rows.join("")}
         </table>
       `;
-      console.log(rows.join());
-      console.log(analysisDisplay);
       tooltip.innerHTML = analysisDisplay;
     }
   } else {
