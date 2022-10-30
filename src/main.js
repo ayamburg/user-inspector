@@ -1,102 +1,13 @@
-import axios from "axios";
 import { createPopper } from "@popperjs/core";
+import { getSubreddits } from "./data";
+import { getAnalysis } from "./analysis";
+
+const searchIcon = chrome.runtime.getURL("search-icon.png");
 
 const seenAuthors = {};
 const poppers = {};
 
-async function getSubreddits(author, type) {
-  const subreddits = {};
-  let after;
-  let object = "";
-
-  if (type === "comments") {
-    object = "comments";
-  } else if (type === "posts") {
-    object = "submitted";
-  } else {
-    throw Error(`Invalid type ${type} for function getSubreddits`);
-  }
-
-  do {
-    const response = await axios.get(
-      `/user/${author}/${object}.json?limit=100&after=${after}`
-    );
-    console.log(response);
-    const comments = response.data.data.children;
-    after = response.data.data.after;
-    comments.forEach((com) => {
-      const sub = com.data.subreddit;
-      if (subreddits[sub]) {
-        subreddits[sub] += 1;
-      } else {
-        subreddits[sub] = 1;
-      }
-    });
-  } while (after !== null);
-  return subreddits;
-}
-
-async function getAnalysis(author) {
-  if (!seenAuthors[author]) {
-    seenAuthors[author] = { postSubreddits: {}, commentSubreddits: {} };
-    seenAuthors[author].commentSubreddits = await getSubreddits(
-      author,
-      "comments"
-    );
-    seenAuthors[author].postSubreddits = await getSubreddits(author, "posts");
-  }
-
-  const subreddits = seenAuthors[author].commentSubreddits;
-  Object.keys(seenAuthors[author].postSubreddits).forEach((sub) => {
-    if (subreddits[sub])
-      subreddits[sub] += seenAuthors[author].postSubreddits[sub];
-    else subreddits[sub] = seenAuthors[author].postSubreddits[sub];
-  });
-  const total = Object.values(subreddits).reduce((a, b) => a + b);
-
-  const topSubreddits = Object.keys(subreddits)
-    .sort((a, b) => subreddits[b] - subreddits[a])
-    .slice(0, 5);
-
-  const topSubredditInfo = topSubreddits.map((sub) => {
-    return {
-      name: sub,
-      contributions: subreddits[sub],
-      percent: subreddits[sub] / total,
-    };
-  });
-  return topSubredditInfo;
-}
-
-const authors = document.querySelectorAll(`a[href*="/user/"]`);
-const searchIcon = chrome.runtime.getURL("search-icon.png");
-
-authors.forEach((authorElement, i) => {
-  const authorArray = authorElement.href.split("/");
-  const userIndex = authorArray.indexOf("user");
-  if (userIndex === -1) return;
-  const author = authorArray[userIndex + 1];
-  if (!author || author === "me") return;
-  const inspectHTML = `
-    <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12" author="${author}">
-    <div class="userInspector-tooltip" id="userInspector-tooltip${i}">
-    </div>
-  `;
-  authorElement.insertAdjacentHTML("afterend", inspectHTML);
-  // author.addEventListener("mouseover", handleHover);
-});
-
-const inspectors = document.querySelectorAll(`.userInspector-inspect-user`);
-inspectors.forEach((inspector) => {
-  const tooltip = document.querySelector(
-    `#userInspector-tooltip${inspector.id}`
-  );
-  poppers[inspector.id] = createPopper(inspector, tooltip, {
-    modifiers: [{ name: "eventListeners", enabled: false }],
-  });
-});
-
-document.addEventListener("click", async function (e) {
+async function onClick(e) {
   if (e.target.classList.contains("userInspector-inspect-user")) {
     const tooltip = document.querySelector(
       `#userInspector-tooltip${e.target.id}`
@@ -124,7 +35,16 @@ document.addEventListener("click", async function (e) {
       }));
       poppers[e.target.id].update();
 
-      const analysis = await getAnalysis(e.target.getAttribute("author"));
+      const author = e.target.getAttribute("author");
+      if (!seenAuthors[author]) {
+        seenAuthors[author] = { postSubreddits: {}, commentSubreddits: {} };
+        seenAuthors[author].commentSubreddits = await getSubreddits(
+          author,
+          "comments"
+        );
+        seenAuthors[author].postSubreddits = await getSubreddits(author, "posts");
+      }
+      const analysis = await getAnalysis(seenAuthors[author]);
       const rows = analysis.map((sub) => {
         return `
           <tr>
@@ -157,4 +77,53 @@ document.addEventListener("click", async function (e) {
       }
     });
   }
-});
+}
+
+function getAuthorFromElement(element) {
+  const authorArray = element.href.split("/");
+    const userIndex = authorArray.indexOf("user");
+    if (userIndex === -1) return;
+    return authorArray[userIndex + 1];
+}
+
+function addInspectors(authors) {
+  authors.forEach((authorElement, i) => {
+    const author = getAuthorFromElement(authorElement);
+    if (!author || author === "me") return;
+    const inspectHTML = `
+      <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12" author="${author}">
+      <div class="userInspector-tooltip" id="userInspector-tooltip${i}">
+      </div>
+    `;
+    console.log(author);
+    authorElement.insertAdjacentHTML("afterend", inspectHTML);
+  });
+  
+  const inspectors = document.querySelectorAll(`.userInspector-inspect-user`);
+  inspectors.forEach((inspector) => {
+    const tooltip = document.querySelector(
+      `#userInspector-tooltip${inspector.id}`
+    );
+    if(!poppers[inspector.id]) {
+      poppers[inspector.id] = createPopper(inspector, tooltip, {
+        modifiers: [{ name: "eventListeners", enabled: false }],
+      });
+    }
+  });
+  
+}
+
+let pageAuthors = document.querySelectorAll(`a[href*="/user/"]`);
+
+addInspectors(pageAuthors);
+
+document.addEventListener("click", onClick);
+
+setInterval(function () {
+  const authors = Array.from(document.querySelectorAll(`a[href*="/user/"]`));
+  if(authors.length !== pageAuthors.length) {
+    const newAuthors = authors.filter(author => !pageAuthors.includes(author));
+    addInspectors(newAuthors);
+    pageAuthors = authors;
+  }
+}, 3000);
