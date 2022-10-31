@@ -88,14 +88,15 @@ function getAuthorFromElement(element) {
 
 function addInspectors(authors) {
   authors.forEach((authorElement, i) => {
+    if(authorElement.getAttribute("data-testid")?.includes("icon")) return;
     const author = getAuthorFromElement(authorElement);
     if (!author || author === "me") return;
+    const uuid = crypto.randomUUID()
     const inspectHTML = `
-      <img class="userInspector-inspect-user" id="${i}" src="${searchIcon}" height="12" author="${author}">
-      <div class="userInspector-tooltip" id="userInspector-tooltip${i}">
+      <img class="userInspector-inspect-user" id="${uuid}" src="${searchIcon}" height="12" author="${author}">
+      <div class="userInspector-tooltip" id="userInspector-tooltip${uuid}">
       </div>
     `;
-    console.log(author);
     authorElement.insertAdjacentHTML("afterend", inspectHTML);
   });
   
@@ -113,7 +114,7 @@ function addInspectors(authors) {
   
 }
 
-let pageAuthors = document.querySelectorAll(`a[href*="/user/"]`);
+let pageAuthors = Array.from(document.querySelectorAll(`a[href*="/user/"]`));
 
 addInspectors(pageAuthors);
 
